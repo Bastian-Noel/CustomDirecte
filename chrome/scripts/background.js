@@ -1,3 +1,10 @@
+/* IMPORT CHROME LIB */
+browser = chrome;
+browserStorage = browser.storage.sync;
+browserVersion = browser.runtime.getManifest().version_name;
+browserStorageOnChanged = browser.storage.sync.onChanged;
+/* ----------------- */
+
 defaultOptions = {
   groups: [
     {
@@ -14,6 +21,11 @@ defaultOptions = {
       ID: "customizations",
       Title: "Personnalisation",
       Subtitle: "Permet de personnaliser un grand nombre d'éléments du site",
+    },
+    {
+      ID: "development",
+      Title: "Développeur",
+      Subtitle: "Options conçues pour les développeurs",
     },
     {
       ID: "close",
@@ -48,10 +60,33 @@ defaultOptions = {
       Group: "notesTable",
       Type: "Switch",
       Value: null,
-      Default: false,
+      Default: true,
       option: "AveragesPerSubjectDisplay",
       Title: "Forcer l’affichage des moyennes par matières",
       Subtitle: "Force l’affichage des moyennes par matières et les recalcule",
+      reloadingRequired: true,
+      lock: "noteTableAnalysis",
+    },
+    {
+      Group: "notesTable",
+      Type: "Switch",
+      Value: null,
+      Default: true,
+      option: "ClassAveragesDisplay2",
+      Title: "Afficher les moyennes de classe",
+      Subtitle: "Affiche les moyennes de classe dans le tableau de notes",
+      reloadingRequired: true,
+      lock: "noteTableAnalysis",
+    },
+    {
+      Group: "notesTable",
+      Type: "Switch",
+      Value: null,
+      Default: false,
+      option: "AveragesPerSubjectRecalculation",
+      Title: "Recalculer les moyennes par matières",
+      Subtitle: "Force le recalcul des moyennes par matières",
+      Warning: "Si votre établissement désactive les coeficients, les moyennes par matières ne seront pas correctes",
       reloadingRequired: true,
       lock: "noteTableAnalysis",
     },
@@ -133,7 +168,7 @@ defaultOptions = {
       Group: "sidebar",
       Type: "Switch",
       Value: null,
-      Default: false,
+      Default: true,
       option: "sidebarDarkmode",
       Title: "Mode sombre pour la barre latérale",
       Subtitle: "Rend les couleurs de fond de la barre latérale plus sombres, pour une meilleure lisibilité",
@@ -338,6 +373,29 @@ defaultOptions = {
       reloadingRequired: false,
       lock: "customization",
     },
+    {
+      Group: "development",
+      Type: "Switch",
+      Value: null,
+      Default: false,
+      option: "dev",
+      Title: "Activer les logs",
+      Subtitle: "Active les logs pour le débuggage",
+      reloadingRequired: true,
+      lock: false,
+    },
+    {
+      Group: "development",
+      Type: "Button",
+      Value: null,
+      Default: false,
+      option: "downloadlog",
+      Content: "download",
+      Title: "Télécharger les logs",
+      Subtitle: false,
+      reloadingRequired: false,
+      lock: "dev",
+    },
   ],
 };
 
@@ -363,6 +421,8 @@ function optionsCorrector(inputOptions = false) {
           }
           // If the option have bool value { Switch } =>
           else if (typeof option.Default === "boolean" && typeof optionFound.Value === "boolean") option.Value = optionFound.Value;
+          // If the option have number value { Color } =>
+          else if (typeof option.Default === "number" && !isNaN(Number(optionFound.Value))) option.Value = optionFound.Value;
         }
         return option;
       }),
@@ -371,18 +431,18 @@ function optionsCorrector(inputOptions = false) {
 
   if (inputOptions) return fixedOptions(inputOptions);
 
-  chrome.storage.sync.get((syncOptions) => {
+  browserStorage.get((syncOptions) => {
     if (syncOptions.options) {
-      chrome.storage.sync.clear();
-      chrome.storage.sync.set(fixedOptions(syncOptions));
-    } else chrome.storage.sync.set(defaultOptions);
+      browserStorage.clear();
+      browserStorage.set(fixedOptions(syncOptions));
+    } else browserStorage.set(defaultOptions);
   });
 }
 
-chrome.runtime.onInstalled.addListener((reason) => {
-  if (reason.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+browser.runtime.onInstalled.addListener((reason) => {
+  if (reason.reason === browser.runtime.OnInstalledReason.INSTALL) {
     // Initiate sync values with default
-    chrome.storage.sync.set(defaultOptions);
+    browserStorage.set(defaultOptions);
   } else {
     // Check all sync values on update
     optionsCorrector();

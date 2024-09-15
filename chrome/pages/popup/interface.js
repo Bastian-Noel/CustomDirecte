@@ -1,3 +1,13 @@
+/* IMPORT CHROME LIB */
+browser = chrome;
+browserStorage = browser.storage.sync;
+browserVersion = browser.runtime.getManifest().version_name;
+browserStorageOnChanged = browser.storage.sync.onChanged;
+scrollIntoView = (ele) => {
+  ele.scrollIntoViewIfNeeded();
+};
+/* ----------------- */
+
 /*  ██████╗  ███████╗ ███╗   ██╗ ███████╗ ██████╗   █████╗  ████████╗ ██╗  ██████╗  ███╗   ██╗ */
 /* ██╔════╝  ██╔════╝ ████╗  ██║ ██╔════╝ ██╔══██╗ ██╔══██╗ ╚══██╔══╝ ██║ ██╔═══██╗ ████╗  ██║ */
 /* ██║  ███╗ █████╗   ██╔██╗ ██║ █████╗   ██████╔╝ ███████║    ██║    ██║ ██║   ██║ ██╔██╗ ██║ */
@@ -18,13 +28,13 @@ window.onmessage = function (e) {
 var urlParams = new URLSearchParams(window.location.search);
 
 const updateValue = (optionId, isSwitch, Value = false, i = false) => {
-  chrome.storage.sync.get((data) => {
+  browserStorage.get((data) => {
     let option = data.options.find((el) => el.option == optionId);
     if (i !== false) {
       if (option.Value == null) option.Value = option.Default;
       option.Value[i] = Value;
     } else option.Value = isSwitch ? !(option.Value == null ? option.Default : option.Value) : Value;
-    chrome.storage.sync.set(data, () => {
+    browserStorage.set(data, () => {
       urlParams.set("scoll", document.querySelector("[group]:not([hide])").scrollTop);
       if (isSwitch && option.reloadingRequired) urlParams.has("reload", option.option) ? urlParams.delete("reload", option.option) : urlParams.append("reload", option.option);
       genere();
@@ -33,7 +43,7 @@ const updateValue = (optionId, isSwitch, Value = false, i = false) => {
 };
 
 genere = () => {
-  chrome.storage.sync.get((data) => {
+  browserStorage.get((data) => {
     const main = document.querySelector("main");
     main.innerHTML = "";
     const groups = document.createElement("div");
@@ -117,6 +127,7 @@ genere = () => {
       const optionInfoElement = document.createElement("div");
       const optionTitleElement = document.createElement("span");
       if (option.Subtitle) var optionSubtitleElement = document.createElement("span");
+      if (option.Warning) var optionWarningElement = document.createElement("span");
 
       optionElement.classList.add("option");
       option.reloadingRequired ? optionElement.setAttribute("reloadingRequired", "") : null;
@@ -127,6 +138,7 @@ genere = () => {
       optionInfoElement.classList.add("optionInfo");
       optionInfoElement.appendChild(optionTitleElement);
       if (option.Subtitle) optionInfoElement.appendChild(optionSubtitleElement);
+      if (option.Warning) optionInfoElement.appendChild(optionWarningElement);
 
       optionTitleElement.classList.add("optionTitle");
       optionTitleElement.textContent = option.Title;
@@ -134,13 +146,16 @@ genere = () => {
       if (option.Subtitle) optionSubtitleElement.classList.add("optionSubtitle");
       if (option.Subtitle) optionSubtitleElement.textContent = option.Subtitle;
 
+      if (option.Warning) optionWarningElement.classList.add("optionWarning");
+      if (option.Warning) optionWarningElement.textContent = option.Warning;
+
       document.querySelector(`[group="${option.Group}"]`).appendChild(optionElement);
 
       if (option.lock) {
         optionElement.addEventListener("click", () => {
           const lock = document.querySelector("[option=" + option.lock + "]");
           if (lock && !getOptionValue(option.lock)) {
-            lock.scrollIntoViewIfNeeded();
+            scrollIntoView(lock);
             lock.classList.remove("showMe");
             lock.offsetWidth;
             lock.classList.add("showMe");
@@ -161,9 +176,20 @@ genere = () => {
           optionElement.addEventListener("click", () => ((option.lock && getOptionValue(option.lock)) || !option.lock ? updateValue(option.option, true) : null));
 
           break;
+        case "Button":
+          const optionButtonElement = document.createElement("div");
+          optionButtonElement.classList.add("optionButton");
+          if (option.Content == "download") optionButtonElement.classList.add("content-download");
+
+          optionElement.appendChild(optionButtonElement);
+
+          optionElement.addEventListener("click", () => ((option.lock && getOptionValue(option.lock)) || !option.lock ? updateValue(option.option, false, true) : null));
+
+          break;
         case "Color":
           const optionSelectionElement = document.createElement("div");
           optionSelectionElement.setAttribute("color", getOptionValue(option.option));
+          optionElement.classList.add("optionSelectionParent");
           optionSelectionElement.classList.add("optionSelection");
           optionElement.appendChild(optionSelectionElement);
 
@@ -190,6 +216,7 @@ genere = () => {
             const optionSelectionElement = document.createElement("div");
 
             optionSelectionElement.classList.add("optionSelection");
+            optionElement.classList.add("optionSelectionParent");
             optionElement.appendChild(optionSelectionElement);
 
             for (const selectionOption of isMultiSelection ? option.MultiOptions[i] : option.Options) {
@@ -234,7 +261,7 @@ genere = () => {
     });
 
     var version = document.getElementById("version");
-    version.innerText = `Version ${chrome.runtime.getManifest().version_name}`;
+    version.innerText = `Version ${browserVersion}`;
   });
 };
 

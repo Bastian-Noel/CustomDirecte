@@ -1,6 +1,9 @@
-/* ------------------- Infos ------------------- */
-// --> A Bastoon Creation
-/* --------------------------------------------- */
+/* IMPORT CHROME LIB */
+browser = chrome;
+browserStorage = browser.storage.sync;
+browserVersion = browser.runtime.getManifest().version_name;
+browserStorageOnChanged = browser.storage.sync.onChanged;
+/* ----------------- */
 
 /* ----------------- Console Log ----------------- */
 const logStyle = {
@@ -22,24 +25,87 @@ function isLoginPage() {
 }
 /* ----------------------------------------------- */
 
+/* --------------- optionsConfig ----------------- */
+function optionsConfig(options, setOption, params, toparam) {
+  if (options == false) {
+    funcName = optionsConfig.caller.name;
+    for (param of Object.entries(toparam(params))) {
+      setOption(param);
+    }
+    document.documentElement.addEventListener("optionEvent", (e) => {
+      for (param of e.detail) {
+        if (param[0] == funcName) {
+          for (ele of Object.entries(toparam(param[1]))) {
+            setOption(ele);
+          }
+        }
+      }
+    });
+    return;
+  }
+  for (option of Object.entries(options)) {
+    setOption(option);
+  }
+  document.documentElement.addEventListener("optionEvent", (e) => {
+    for (option of e.detail) {
+      if (options[option[0]] != undefined) {
+        options[option[0]] = option[1];
+        setOption(option);
+      }
+    }
+  });
+}
+/* ----------------------------------------------- */
+
+/* ----------------- Update Value ---------------- */
+function updateValue(Option, value) {
+  browserStorage.get((data) => {
+    let option = data.options.find((el) => el.option == Option);
+    option.Value = value;
+    browserStorage.set(data);
+  });
+}
+/* ----------------------------------------------- */
+
+/* ---------------- TXT Downloader ---------------- */
+function txtDownloader(content, fileName) {
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+  a.download = `${fileName}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+/* ----------------------------------------------- */
+
 /* ----------------- Console Log ----------------- */
 const debug = new (class Debug {
   constructor() {
     this.active = false;
+    this.logs = [];
   }
 
-  start() {
-    this.active = true;
-    console.log(`%cDebug [Enabled]`, logStyle.optionTrue);
-    this.log("Extension Version " + chrome.runtime.getManifest().version);
-    return true;
+  startLog(close = false) {
+    this.active = !close;
+    console.log(close ? `%c> Debug [Disabled]` : `%c> Debug [Enabled]`, close ? logStyle.optionFalse : logStyle.optionTrue);
   }
 
   log(module, str) {
+    str ? (str = `[${module}] ${str}`) : (str = `${module}`);
     if (this.active) {
-      str ? (str = `[${module}] ${str}`) : (str = `${module}`);
       console.log(`%cDebug | ${str}`, logStyle.debug);
     }
+    if (str != undefined) this.logs.push(str);
+  }
+
+  dev(options) {
+    this.startLog(!option[1]);
+    optionsConfig(options, (option) => {
+      if (option[0] == "downloadlog" && option[1]) {
+        updateValue("downloadlog", false);
+        txtDownloader(`Version ${browserVersion} ; Timestamp ${Date.now()}\n` + this.logs.join("\n"), "logs");
+      }
+    });
   }
 
   startOptionLog(module, state) {
@@ -49,11 +115,8 @@ const debug = new (class Debug {
 /* ----------------------------------------------- */
 
 /* ----------- Get option changements ------------ */
-const target = new EventTarget();
-
-chrome.storage.sync.onChanged.addListener((changes) => {
+browserStorageOnChanged.addListener((changes) => {
   let [key, { oldValue, newValue }] = Object.entries(changes)[0];
-
   if (key !== "options") return;
 
   function convert(inputOptions) {
@@ -74,7 +137,7 @@ chrome.storage.sync.onChanged.addListener((changes) => {
   }
 
   if (differences != []) {
-    target.dispatchEvent(new CustomEvent("optionEvent", { detail: differences }));
+    document.documentElement.dispatchEvent(new CustomEvent("optionEvent", { detail: differences }));
   }
 });
 /* ----------------------------------------------- */
@@ -87,69 +150,41 @@ function register(func) {
 }
 /* ----------------------------------------------- */
 
-/* --------------- optionsConfig ----------------- */
-function optionsConfig(options, setOption, params, toparam) {
-  if (options == false) {
-    funcName = optionsConfig.caller.name;
-    for (param of Object.entries(toparam(params))) {
-      setOption(param);
-    }
-    target.addEventListener("optionEvent", (e) => {
-      for (param of e.detail) {
-        if (param[0] == funcName) {
-          console.log(param);
-          for (ele of Object.entries(toparam(param[1]))) {
-            setOption(ele);
-          }
-        }
-      }
-    });
-    return;
-  }
-  for (option of Object.entries(options)) {
-    setOption(option);
-  }
-  target.addEventListener("optionEvent", (e) => {
-    for (option of e.detail) {
-      if (options[option[0]] != undefined) {
-        options[option[0]] = option[1];
-        setOption(option);
-      }
-    }
-  });
-}
-/* ----------------------------------------------- */
-
 /* --------- Options Initialitialisator ---------- */
 function Start(statue) {
-  // Active le mode de debugage si activé
-  // if (statue.debug) debug.start();
-
   // Change le logo si l'une des options est activé
-  if (Object.values(statue).some((obj) => obj.value === true)) document.querySelector("link[rel*='icon']").href = chrome.runtime.getURL(`/icons/EcoleDirecte/magenta.ico`);
+  if (Object.values(statue).some((obj) => obj.value === true) && document.querySelector("link[rel*='icon']")) document.querySelector("link[rel*='icon']").href = browser.runtime.getURL(`/icons/EcoleDirecte/magenta.ico`);
 
   // Execusion des modules avec message dans la console
   for (ele in statue) {
     let func = registedOptions[ele];
     let value = statue[ele].value;
+
+    // Active le mode de debugage si activé
+    if (ele == "dev" && value) debug.dev(statue[ele].secondary);
+
+    // Option lié a aucune fonction
+    if (!func) continue;
+
     if (!value) {
       debug.startOptionLog(func.name, false);
       continue;
     }
+
     try {
       func(statue[ele].secondary, value);
       debug.startOptionLog(func.name, true);
       debug.log(func.name + " >>> Successful execution");
     } catch (error) {
       console.error(error);
-      debug.startOptionLog(`%c${func.name} [Error]`, true);
+      debug.startOptionLog(`${func.name} [Error]`, true);
       debug.log(func.name + " >>> Error on execution");
     }
   }
 }
 
 function Run() {
-  chrome.storage.sync.get((inputOptions) => {
+  browserStorage.get((inputOptions) => {
     if (!inputOptions.options) console.log(inputOptions);
     if (!inputOptions.options) return;
     inputOptions = inputOptions.options ? inputOptions.options : inputOptions;
@@ -166,14 +201,21 @@ function Run() {
       option[item.secondary].secondary[item.option] = item.value;
     });
 
-    Start(option);
+    const readystateHandler = () => {
+      if (["complete", "interactive"].includes(document.readyState)) {
+        Start(option);
+        document.removeEventListener("readystatechange", readystateHandler);
+      }
+    };
+
+    document.addEventListener("readystatechange", readystateHandler);
+    readystateHandler();
   });
 }
 Run();
 /* ----------------------------------------------- */
 
 /* -------------- Options Fonctions -------------- */
-
 function noteTableAnalysis(options) {
   // Setup Module internal log
   let logName = arguments.callee.name;
@@ -199,11 +241,13 @@ function noteTableAnalysis(options) {
 
   try {
     const tippy = document.createElement("script");
-    tippy.src = chrome.runtime.getURL("/scripts/tippy.js");
+    tippy.src = browser.runtime.getURL("/scripts/tippy.js");
     document.head.appendChild(tippy);
     tippyState = true;
+    log("Tippy -> [ Added ]");
   } catch {
     tippyState = false;
+    log("Tippy -> [ ⚠️ Can't be added ]");
   }
 
   // Fonction Arrondie
@@ -215,11 +259,71 @@ function noteTableAnalysis(options) {
   log("BodyObserver -> [ Starting ]");
   const averageTableObserver = new MutationObserver(() => {
     let TableParent = document.getElementById("encart-notes");
+    let periodeElement = document.getElementById("unePeriode");
+
+    // Si le tableau des moyennes n'existe pas, le crée
+    if (typeof averageTable == "undefined") averageTable = false;
+    if (!averageTable) averageTable = false;
+
+    // Cherche si le tableau des moyennes a été cherché
+    try {
+      averageTableSearch = periodeElement.dataset.averageTableSearch;
+      if (!averageTableSearch) averageTableSearch = false;
+    } catch (error) {
+      averageTableSearch = true;
+    }
+
+    // Si le tableau des moyennes n'a pas encore été cherché
+    if (TableParent && periodeElement && !averageTableSearch) {
+      periodeElement.dataset.averageTableSearch = averageTableSearch = true;
+      // Cherche le tableau des moyennes
+      try {
+        log(" > averageTable conditions analysis  -> [ Starting ]");
+        activeTab = periodeElement.querySelector("li.active > a");
+        tabs = periodeElement.querySelectorAll("[role=tab]");
+        averageTableFound = periodeElement.dataset.averageTableFound;
+
+        // Si les conditions de recherche sont valides
+        if (tabs && !averageTableFound && activeTab) {
+          log(" > > averageTable search conditions -> [ Valid ]");
+          // Pour chaque onglet
+          try {
+            for (let i = 0; i < tabs.length; i++) {
+              // Si l'onglet est l'onglet actif, le saute
+              const element = tabs[i];
+              if (element === activeTab) continue;
+
+              element.click();
+
+              if (!document.getElementById("encart-moyennes")) continue;
+
+              // Si le tableau des moyennes est trouvé
+              if (document.getElementById("encart-moyennes").querySelector("table")) {
+                log(" > > averageTable -> [ Found ]");
+                averageTable = document.getElementById("encart-moyennes").querySelector("table").cloneNode(true);
+                periodeElement.dataset.averageTableFound = true;
+                break;
+              }
+            }
+          } catch (error) {
+            log(" > > averageTable -> [ ⚠️ Error ]");
+          }
+          if (!averageTable) log(" > > averageTable -> [ ⚠️ Non-existent ]");
+
+          activeTab.click();
+          return;
+        }
+      } catch (error) {
+        log(" > > averageTable -> [ ⚠️ Impossible to find ]");
+      }
+    }
+
     // execute 'Calculator()' si le tableau actuellement affiché n'a pas déjà été modifié
     if (TableParent && TableParent.dataset.averageCalculator != "true") {
       log("New gradeTable not calculated -> [ Found ]");
+
       TableParent.dataset.averageCalculator = true;
-      Calculator(TableParent);
+      Calculator(TableParent, averageTableAnalysis(averageTable));
     }
   });
   averageTableObserver.observe(document.body, {
@@ -227,8 +331,58 @@ function noteTableAnalysis(options) {
     subtree: true,
   });
 
-  function Calculator(TableParent) {
+  function averageTableAnalysis(averageTable) {
+    if (!averageTable) return false;
+    log("AverageTable analysis -> [ Starting ]");
+
+    averageTableLines = {};
+
+    try {
+      for (line of averageTable.tBodies[0].rows) {
+        if (!line.querySelector(".libellediscipline").innerText) continue;
+        if (line.querySelector(".libellediscipline").innerText == "") continue;
+
+        newFormat = (ele) => {
+          try {
+            newEle = parseFloat(ele.innerText.replace(",", "."));
+            if (isNaN(newEle) || typeof newEle !== "number") {
+              throw new Exception();
+            }
+            return newEle;
+          } catch {
+            try {
+              if (debug.active) ele.setAttribute("style", "border: dashed red;");
+            } catch {}
+            return false;
+          }
+        };
+
+        average = line.querySelector(".moyenneeleve") ? newFormat(line.querySelector(".moyenneeleve")) : false;
+        classAverage = line.querySelector(".moyenneclasse") ? newFormat(line.querySelector(".moyenneclasse")) : false;
+
+        if (!average) continue;
+
+        averageTableLines[line.querySelector(".libellediscipline").innerText] = { average: average, classAverage: classAverage };
+      }
+    } catch (error) {
+      log(" > AverageTable analysis -> [ ⚠️ Error ]");
+      return false;
+    }
+
+    log(" > AverageTable analysis -> [ Finish ]");
+    if (averageTableLines == {}) return false;
+    return averageTableLines;
+  }
+
+  function Calculator(TableParent, averageTableInfos) {
     log("GradeTable editing -> [ Starting ]");
+
+    if (averageTableInfos) {
+      const classAverages = Object.values(averageTableInfos).map((info) => info.classAverage);
+      if (classAverages.every((average) => !average)) {
+        options["ClassAveragesDisplay2"] = false;
+      }
+    }
 
     // Verifie la pressence du tableau
     if (!TableParent.querySelector("table")) {
@@ -244,7 +398,7 @@ function noteTableAnalysis(options) {
 
     try {
       // Change le message avec la date du dernier calcule de la moyenne
-      TableParent.querySelector("p").innerHTML = "<b>Moyennes calculées par l'extension : " + chrome.runtime.getManifest().name + "</b>";
+      TableParent.querySelector("p").innerHTML = "<b>Moyennes calculées par l'extension : " + browser.runtime.getManifest().name + "</b>";
       log(" > Message with last calculation date -> [ Updated ]");
     } catch {
       log(" > Message with last calculation date -> [ ⚠️ Non-existent or Untouchable ]");
@@ -286,21 +440,22 @@ function noteTableAnalysis(options) {
     // ### Analyse des notes et calcules des moyennes ###
     log(" > Grade analysis and Average calculation -> [ Starting ]");
 
-    TotalGradesAndCoef = [];
+    LinesGradesAndCoef = [];
 
-    AllGradeAndAverage = [];
+    Lines = [];
 
     // Recherche la configuration du tableau
     log(" > > Table configuration finding -> [ Starting ]");
     tableConfiguration = {
       discipline: [false, undefined],
       coef: [false, undefined],
+      moyenneclasse: [false, undefined],
       relevemoyenne: [false, undefined],
       notes: [false, undefined],
     };
 
     // Cherche l'index de chaque colones
-    function tableGetIndex() {
+    tableGetIndex = () => {
       [...gradeTable.tHead.rows[0].cells].forEach((cell, index) => {
         if (cell.classList.contains("discipline")) {
           log(" > > > Column {discipline} -> [ Found ]");
@@ -311,6 +466,11 @@ function noteTableAnalysis(options) {
           log(" > > > Column {coef} -> [ Found ]");
           tableConfiguration["coef"][0] = index;
           if (tableConfiguration["coef"][1] == undefined) tableConfiguration["coef"][1] = true;
+        }
+        if (cell.classList.contains("moyenneclasse")) {
+          log(" > > > Column {moyenneclasse} -> [ Found ]");
+          tableConfiguration["moyenneclasse"][0] = index;
+          if (tableConfiguration["moyenneclasse"][1] == undefined) tableConfiguration["moyenneclasse"][1] = true;
         }
         if (cell.classList.contains("relevemoyenne")) {
           log(" > > > Column {relevemoyenne} -> [ Found ]");
@@ -323,7 +483,7 @@ function noteTableAnalysis(options) {
           if (tableConfiguration["notes"][1] == undefined) tableConfiguration["notes"][1] = true;
         }
       });
-    }
+    };
     tableGetIndex();
 
     if (tableConfiguration["coef"][1] == undefined && options["AveragesPerSubjectDisplay"]) {
@@ -335,9 +495,19 @@ function noteTableAnalysis(options) {
       tableGetIndex();
     }
 
+    if (options["ClassAveragesDisplay2"] && averageTableInfos) {
+      log(" > > > Column {moyenneclasse} -> [ Genere ] -> [ Reload module ]");
+      moyenneclasseTitleRow = gradeTable.tHead.rows[0].insertCell(tableConfiguration["coef"][0] + 1);
+      moyenneclasseTitleRow.outerHTML = `<th class="moyenneclasse ng-star-inserted">Classe</th>`;
+      if (options["generalAverageDisplay"]) averageDiv.colSpan += 1;
+      tableConfiguration["moyenneclasse"][1] = false;
+      tableGetIndex();
+    }
+
     if (tableConfiguration["relevemoyenne"][1] == undefined && options["AveragesPerSubjectDisplay"]) {
       log(" > > > Column {relevemoyenne} -> [ ⚠️ Non-existent ] -> [ Genere ] -> [ Reload module ]");
-      relevemoyenneTitleRow = gradeTable.tHead.rows[0].insertCell(tableConfiguration["coef"][0] + 1);
+      if (options["ClassAveragesDisplay2"] && averageTableInfos) relevemoyenneTitleRow = gradeTable.tHead.rows[0].insertCell(tableConfiguration["moyenneclasse"][0] + 1);
+      else relevemoyenneTitleRow = gradeTable.tHead.rows[0].insertCell(tableConfiguration["coef"][0] + 1);
       relevemoyenneTitleRow.outerHTML = `<th class="relevemoyenne ng-star-inserted">Moyennes</th>`;
       if (options["generalAverageDisplay"]) averageDiv.colSpan += 1;
       tableConfiguration["relevemoyenne"][1] = false;
@@ -348,7 +518,7 @@ function noteTableAnalysis(options) {
     log(" > > Table configuration Analysis -> [ Starting ]");
     for (item in tableConfiguration) {
       log(` > > > Column {${item}} -> [ ${tableConfiguration[item][1] === true ? "Here" : "⚠️ Not Here"} ]`);
-      tableConfiguration[item][0] ? undefined : (tableConfiguration[item] = false);
+      tableConfiguration[item][0] !== false ? undefined : (tableConfiguration[item] = false);
     }
 
     // Verifie la pressence de la colonne des notes
@@ -368,11 +538,25 @@ function noteTableAnalysis(options) {
         continue;
       }
 
+      lineTitle = line.cells[tableConfiguration["discipline"][0]].querySelector(".nommatiere") ? line.cells[tableConfiguration["discipline"][0]].querySelector(".nommatiere").innerText : false;
+
       if (tableConfiguration["coef"][1] == false && options["AveragesPerSubjectDisplay"]) {
         log(" > > > Line Element {coef} -> [ ⚠️ Non-existent ] -> [ Genere ]");
         coefTitleCell = line.insertCell(tableConfiguration["coef"][0]);
         coefTitleCell.innerHTML = `<span class="ng-star-inserted">1</span>`;
         coefTitleCell.classList.add("coef", "ng-star-inserted");
+      }
+
+      if (tableConfiguration["moyenneclasse"][1] == false && options["ClassAveragesDisplay2"] && averageTableInfos) {
+        log(" > > > Line Element {moyenneclasse} -> [ Genere ]");
+        moyenneclasseTitleCell = line.insertCell(tableConfiguration["moyenneclasse"][0]);
+        moyenneclasseTitleCell.classList.add("moyenneclasse", "ng-star-inserted");
+        moyenneclasseSpan = document.createElement("span");
+        moyenneclasseSpan.classList.add("ng-star-inserted");
+        moyenneclasseTitleCell.appendChild(moyenneclasseSpan);
+        if (averageTableInfos && averageTableInfos[lineTitle]) {
+          if (averageTableInfos[lineTitle].classAverage) moyenneclasseSpan.innerHTML = hundredthRound(averageTableInfos[lineTitle].classAverage);
+        }
       }
 
       if (tableConfiguration["relevemoyenne"][1] == false && options["AveragesPerSubjectDisplay"]) {
@@ -383,13 +567,20 @@ function noteTableAnalysis(options) {
 
       // Si il y au moins une note ou si la matiere contient des sous-matiere
       lineProperties = {
-        Length: line.cells[tableConfiguration["notes"][0]].childNodes.length > 1,
+        this: line,
+        title: lineTitle,
+        HasNotes: line.cells[tableConfiguration["notes"][0]].childNodes.length > 1,
         IsMaster: line.classList.contains("master"),
         IsSecondary: line.classList.contains("secondary"),
         IsSecondaryButNotlast: line.classList.contains("secondarynotlast"),
+        notes: [],
+        average: false,
+        averageSpan: false,
+        coef: false,
+        GradesAndCoef: [],
       };
 
-      if (!(lineProperties["Length"] || lineProperties["IsMaster"] || lineProperties["IsSecondary"])) {
+      if (!(lineProperties["HasNotes"] || lineProperties["IsMaster"] || lineProperties["IsSecondary"])) {
         log(" > > > This line does not contain any notes and is neither Master ou Secondary -> [⚠️]");
         continue;
       }
@@ -432,36 +623,29 @@ function noteTableAnalysis(options) {
       }
 
       // Trouve l'affichage du coef
-      LineCoef = 1;
+      lineProperties.coef = 1;
       if (tableConfiguration["coef"] && (coefColumn = tableConfiguration["coef"][0])) {
         if ((coefSpan = line.cells[coefColumn].querySelector("span"))) {
           if (debug.active) coefSpan.setAttribute("style", "border: solid orange;");
-          LineCoef = parseFloat(coefSpan.innerText);
+          lineProperties.coef = parseFloat(coefSpan.innerText);
         }
       }
 
       // Dans le cas de ligne de type "Master"
       if (lineProperties["IsMaster"]) {
         log(` > > > New Master line Analysis -> [ Starting ]`);
-        masterLineAverageSpan = averageSpan;
-        masterLineCoef = LineCoef;
-        masterLineGradesAndCoef = [];
+        masterLineProperties = lineProperties;
+        masterLineProperties.averageSpan = averageSpan;
+        masterLineProperties.coef = lineProperties.coef;
+        masterLineProperties.GradesAndCoef = [];
         continue;
       }
       // Dans le cas des autres types
 
       log(` > > > New line Analysis -> [ Starting ]`);
 
-      LineAllGradeAndAverage = {
-        notes: [],
-        average: false,
-        averageSpan: averageSpan,
-        coef: LineCoef,
-        secondary: lineProperties["IsSecondary"],
-        master: lineProperties["IsMaster"],
-      };
-
-      LineGradesAndCoef = [];
+      lineProperties.averageSpan = averageSpan;
+      lineProperties.coef = lineProperties.coef;
 
       // Pour chaque notes
       for (notes of line.cells[tableConfiguration["notes"][0]].querySelectorAll("button > span:nth-of-type(1).valeur")) {
@@ -504,77 +688,67 @@ function noteTableAnalysis(options) {
         log(` > > > > New Note {${note}} with coef {${coef}} -> [ Added ] `);
 
         // Ajout des notes et coefs pour la ligne
-        LineGradesAndCoef.push([note, coef]);
-        LineAllGradeAndAverage["notes"].push([note, coef, notes]);
+        lineProperties.GradesAndCoef.push([note, coef]);
+        lineProperties["notes"].push([note, coef, notes]);
       }
 
-      if (!(LineGradesAndCoef.length > 0)) {
+      if (!(lineProperties.GradesAndCoef.length > 0)) {
         log(` > > > > No note in this line -> [⚠️]`);
         if (!lineProperties["IsSecondaryButNotlast"] && lineProperties["IsSecondary"]) {
-          if (!masterLineGradesAndCoef.length) continue;
+          if (!masterLineProperties.GradesAndCoef.length) continue;
           // Si c'est la derniere ligne secondaire, calcule la somme de la principale
-          masterLineAverage = moyennePondere(masterLineGradesAndCoef);
-          TotalGradesAndCoef.push([masterLineAverage, masterLineCoef]);
-          if (masterLineAverageSpan) {
-            masterLineAverageSpan.innerText = hundredthRound(masterLineAverage);
-            AllGradeAndAverage.push({
-              average: masterLineAverage,
-              averageSpan: masterLineAverageSpan,
-              coef: masterLineCoef,
-              secondary: false,
-              master: true,
-            });
+          masterLineProperties.average = moyennePondere(masterLineProperties.GradesAndCoef);
+          masterLineProperties.GradesAndCoef.push([masterLineProperties.average, masterLineProperties.coef]);
+          if (masterLineProperties.averageSpan) {
+            masterLineProperties.averageSpan.innerText = hundredthRound(masterLineProperties.average);
+            Lines.push(masterLineProperties);
           }
-          log(` > > > > Master line average {${masterLineAverage}} with coef {${masterLineCoef}}`);
+          log(` > > > > Master line average {${masterLineProperties.average}} with coef {${masterLineProperties.coef}}`);
         }
         continue;
       }
 
       // Calcule de la moyenne de la ligne
-      LineAverage = moyennePondere(LineGradesAndCoef);
-      LineAllGradeAndAverage["average"] = LineAverage;
-      AllGradeAndAverage.push(LineAllGradeAndAverage);
+      lineProperties.average = moyennePondere(lineProperties.GradesAndCoef);
+      if (!options["AveragesPerSubjectRecalculation"] && averageTableInfos && averageTableInfos[lineTitle]) {
+        if (averageTableInfos[lineTitle].average) lineProperties.average = averageTableInfos[lineTitle].average;
+      }
+      Lines.push(lineProperties);
 
       // Affiche la nouvelle moyenne de la ligne
       if (tableConfiguration["relevemoyenne"][0]) {
         if (debug.active && !lineProperties["IsSecondary"]) averageSpan.setAttribute("style", "border: solid blue;");
         if (debug.active && lineProperties["IsSecondary"]) averageSpan.setAttribute("style", "border: solid red;");
-        if (averageSpan) averageSpan.innerText = hundredthRound(LineAverage);
+        if (averageSpan) averageSpan.innerText = hundredthRound(lineProperties.average);
       }
 
       if (lineProperties["IsSecondary"]) {
         // Ajout des notes et coefs pour la ligne Master
-        masterLineGradesAndCoef.push([LineAverage, LineCoef]);
-        log(` > > > > Secondary line average {${LineAverage}} with coef {${LineCoef}}`);
+        masterLineProperties.GradesAndCoef.push([lineProperties.average, lineProperties.coef]);
+        log(` > > > > Secondary line average {${lineProperties.average}} with coef {${lineProperties.coef}}`);
 
         if (!lineProperties["IsSecondaryButNotlast"]) {
-          if (!masterLineGradesAndCoef.length) continue;
+          if (!masterLineProperties.GradesAndCoef.length) continue;
           // Si c'est la derniere ligne secondaire, calcule la somme de la principale
-          masterLineAverage = moyennePondere(masterLineGradesAndCoef);
-          TotalGradesAndCoef.push([masterLineAverage, masterLineCoef]);
-          if (masterLineAverageSpan) {
-            masterLineAverageSpan.innerText = hundredthRound(masterLineAverage);
-            AllGradeAndAverage.push({
-              average: masterLineAverage,
-              averageSpan: masterLineAverageSpan,
-              coef: masterLineCoef,
-              secondary: false,
-              master: true,
-            });
+          masterLineProperties.average = moyennePondere(masterLineProperties.GradesAndCoef);
+          LinesGradesAndCoef.push([masterLineProperties.average, masterLineProperties.coef]);
+          if (masterLineProperties.averageSpan) {
+            masterLineProperties.averageSpan.innerText = hundredthRound(masterLineProperties.average);
+            Lines.push(masterLineProperties);
           }
-          log(` > > > > Master line average {${masterLineAverage}} with coef {${masterLineCoef}}`);
+          log(` > > > > Master line average {${masterLineProperties.average}} with coef {${masterLineProperties.coef}}`);
         }
       }
 
-      if (!lineProperties["IsSecondary"] && lineProperties["Length"]) {
+      if (!lineProperties["IsSecondary"] && lineProperties["HasNotes"]) {
         // Ajout des notes et coefs pour la moyenne générale
-        TotalGradesAndCoef.push([LineAverage, LineCoef]);
-        log(` > > > > Line average {${LineAverage}} with coef {${LineCoef}}`);
+        LinesGradesAndCoef.push([lineProperties.average, lineProperties.coef]);
+        log(` > > > > Line average {${lineProperties.average}} with coef {${lineProperties.coef}}`);
       }
     }
 
     // Calcule la moyenne
-    FinalAverage = moyennePondere(TotalGradesAndCoef);
+    FinalAverage = moyennePondere(LinesGradesAndCoef);
 
     if (isNaN(FinalAverage)) {
       log(`Moyenne générale non valide -> [🛑]`);
@@ -590,17 +764,17 @@ function noteTableAnalysis(options) {
     if (!tippyState) return;
 
     // Calcule la somme des coef des matières
-    AllGradeAndAverage_SommeCoef = AllGradeAndAverage.reduce((total, item) => (item.secondary ? total : total + item.coef), 0);
-    log(` > Total Coef {${AllGradeAndAverage_SommeCoef}} -> [ Defined ]`);
+    Lines_SommeCoef = Lines.reduce((total, item) => (item.IsSecondary ? total : total + item.coef), 0);
+    log(` > Total Coef {${Lines_SommeCoef}} -> [ Defined ]`);
 
     // Pour chaque ligne du tableau
     log(` > List of All Grade And Average Analysis -> [ Starting ]`);
-    for (line of AllGradeAndAverage) {
+    for (line of Lines) {
       log(` > > New Line Analysis -> [ Starting ]`);
       // Si elle n'est pas secondaire
-      if (line.secondary) continue;
+      if (line.IsSecondary) continue;
       // Calcule sont influence
-      LineInfluence = (line.coef * (line.average - FinalAverage)) / (AllGradeAndAverage_SommeCoef - line.coef);
+      LineInfluence = (line.coef * (line.average - FinalAverage)) / (Lines_SommeCoef - line.coef);
       log(` > > > Line Influence {${LineInfluence}} -> [ Defined ]`);
       // Si un span existe
       if (line.averageSpan) {
@@ -664,7 +838,7 @@ function newSidebar(options) {
 
       // Ajoute le nom de l'utilisateur dans un element de style et sous forme de variable css root
       rootName = document.createElement("style");
-      rootName.innerHTML = `:root { --userName: "${usernameElem.innerText.trim().replace(/ /, "\\A")}" }`;
+      rootName.innerHTML = `:root { --userName: "${usernameElem.innerText.trim().replace(/ /, "\\A ")}" }`;
       document.head.appendChild(rootName);
       log(" > UserName in CSS Root -> [ Added ]");
 
@@ -676,9 +850,13 @@ function newSidebar(options) {
 
       // Fonction qui permet d'ajouté un nouveau bouton au menu
       function menuAddNewOptions(id, icon, text, onclick) {
+        // li
+        li = document.createElement("li");
+        menuMoreOptions.appendChild(li);
+
         // Element principale
         moreOptionElement = document.createElement("a");
-        menuMoreOptions.appendChild(moreOptionElement);
+        li.appendChild(moreOptionElement);
         moreOptionElement.id = `moreOption-${id}`;
         moreOptionElement.classList.add("moreOption");
         if (onclick) moreOptionElement.onclick = onclick;
@@ -733,7 +911,7 @@ function customization(options) {
   });
 
   customizationscss = document.createElement("style");
-  fetch(chrome.runtime.getURL("/styles/customizations.css"))
+  fetch(browser.runtime.getURL("/styles/customizations.css"))
     .then((response) => response.text())
     .then((data) => {
       customizationscss.innerHTML = data;
@@ -741,7 +919,7 @@ function customization(options) {
   document.head.appendChild(customizationscss);
 
   const darkreader = document.createElement("script");
-  darkreader.src = chrome.runtime.getURL("/scripts/darkreader.js");
+  darkreader.src = browser.runtime.getURL("/scripts/darkreader.js");
   document.head.appendChild(darkreader);
 }
 register(customization);
@@ -782,7 +960,7 @@ function customizationButton(options, value) {
   optionsPopup = document.createElement("iframe");
   optionsPopup.classList.add("optionsPopup");
   document.body.prepend(optionsPopup);
-  optionsPopup.src = chrome.runtime.getURL("/pages/popup/interface.html");
+  optionsPopup.src = browser.runtime.getURL("/pages/popup/interface.html");
 
   function closeOptionsPopup() {
     optionsPopup.contentWindow.postMessage("close", "*");
@@ -797,21 +975,21 @@ function customizationButton(options, value) {
   };
 
   defaultcss = document.createElement("style");
-  fetch(chrome.runtime.getURL("/styles/default.css"))
+  fetch(browser.runtime.getURL("/styles/default.css"))
     .then((response) => response.text())
     .then((data) => {
       defaultcss.innerHTML = data;
     });
   document.head.appendChild(defaultcss);
 
-  window.onmessage = function (e) {
+  window.addEventListener("message", (e) => {
     if (e.data == "closeOptionsPopup") {
       document.querySelector("html").classList.remove("optionsPopupActif");
     }
     if (e.data == "reloadOptionsPopup") {
       location.reload();
     }
-  };
+  });
 }
 register(customizationButton);
 
