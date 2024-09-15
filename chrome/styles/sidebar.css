@@ -461,7 +461,7 @@ html[pinnedsidebar="true"].new-menu #container-menu .ed-menu .ed-menu-list-wrapp
 
 html.new-menu .moreOption {
   text-decoration: none;
-  color: color-mix(in srgb, var(--footer-primary-color) 70%, transparent);
+  color: color-mix(in srgb, var(--sidebar-text) 70%, transparent);
   transition: var(--tran-03);
 }
 
@@ -476,7 +476,7 @@ html[pinnedsidebar="true"].new-menu#container-menu .moreOption span {
 
 html.new-menu .moreOption:hover {
   text-decoration: none;
-  color: color-mix(in srgb, var(--footer-primary-color) 70%, transparent);
+  color: color-mix(in srgb, var(--sidebar-text) 70%, transparent);
 }
 
 html[pinnedsidebar="true"].new-menu #container-menu .ed-menu-list-wrapper li a span.item-name {
