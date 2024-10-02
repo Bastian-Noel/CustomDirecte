@@ -838,7 +838,7 @@ function newSidebar(options) {
 
       // Ajoute le nom de l'utilisateur dans un element de style et sous forme de variable css root
       rootName = document.createElement("style");
-      rootName.innerHTML = `:root { --userName: "${usernameElem.innerText.trim().replace(/ /, "\\A")}" }`;
+      rootName.innerHTML = `:root { --userName: "${usernameElem.innerText.trim().replace(/ /, "\\A ")}" }`;
       document.head.appendChild(rootName);
       log(" > UserName in CSS Root -> [ Added ]");
 
@@ -850,9 +850,13 @@ function newSidebar(options) {
 
       // Fonction qui permet d'ajouté un nouveau bouton au menu
       function menuAddNewOptions(id, icon, text, onclick) {
+        // li
+        li = document.createElement("li");
+        menuMoreOptions.appendChild(li);
+
         // Element principale
         moreOptionElement = document.createElement("a");
-        menuMoreOptions.appendChild(moreOptionElement);
+        li.appendChild(moreOptionElement);
         moreOptionElement.id = `moreOption-${id}`;
         moreOptionElement.classList.add("moreOption");
         if (onclick) moreOptionElement.onclick = onclick;

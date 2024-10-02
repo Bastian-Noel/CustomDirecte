@@ -168,7 +168,7 @@ defaultOptions = {
       Group: "sidebar",
       Type: "Switch",
       Value: null,
-      Default: false,
+      Default: true,
       option: "sidebarDarkmode",
       Title: "Mode sombre pour la barre latérale",
       Subtitle: "Rend les couleurs de fond de la barre latérale plus sombres, pour une meilleure lisibilité",
