@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr" x-data="{ dark: true }" :class="dark ? 'dark' : 'light'">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CustomDirecte</title>
+  <link rel="stylesheet" href="interface.css" />
+  <script type="text/javascript" src="interface.js"></script>
+  <script src="/tippy.js"></script>
+</head>
+
+<body class="flex flex-col w-full h-full bg-gray-50">
+  <header class="flex items-center px-5 shadow-sm bg-white-a700">
+    <!-- Titre -->
+    <h1 class="flex-none text-[22px] font-semibold !text-gray-900">CustomDirecte</h1>
+    <!-- Sperateur -->
+    <div class="flex-none ml-[22px] h-[54px] w-px bg-black-900_26 shadow-md"></div>
+    <!-- Navbar -->
+    <nav class="flex-1">
+      <ul class="flex items-center gap-4 pl-4">
+
+        <li data-selected="true" class="cursor-pointer group flex items-center rounded-[5px] bg-none data-[selected=true]:bg-pink-700_19 py-1 px-2">
+          <img class="h-[26px] filter-mainColor pr-2" src="./svg/icons/chart-mixed.svg" />
+          <span class="text-[18px] font-medium text-gray-900 group-data-[selected=true]:text-pink-700 group-hover:text-pink-700">Notes</span>
+        </li>
+
+        <li data-selected="false" class="cursor-pointer group flex items-center rounded-[5px] bg-none data-[selected=true]:bg-pink-700_19 py-1 px-2">
+          <img class="h-[26px] filter-mainColor pr-2" src="./svg/icons/sidebar.svg" />
+          <span class="text-[18px] font-medium text-gray-900 group-data-[selected=true]:text-pink-700 group-hover:text-pink-700">Barre latérale</span>
+        </li>
+
+        <li data-selected="false" class="cursor-pointer group flex items-center rounded-[5px] bg-none data-[selected=true]:bg-pink-700_19 py-1 px-2">
+          <img class="h-[26px] filter-mainColor pr-2" src="./svg/icons/swatchbook.svg" />
+          <span class="text-[18px] font-medium text-gray-900 group-data-[selected=true]:text-pink-700 group-hover:text-pink-700">Personnalisation</span>
+        </li>
+
+        <li data-selected="false" class="cursor-pointer group flex items-center rounded-[5px] bg-none data-[selected=true]:bg-pink-700_19 py-1 px-2">
+          <img class="h-[26px] filter-mainColor pr-2" src="./svg/icons/gear.svg" />
+          <span class="text-[18px] font-medium text-gray-900 group-data-[selected=true]:text-pink-700 group-hover:text-pink-700">Développeur</span>
+        </li>
+    </nav>
+    <!-- Sperateur -->
+    <div class="flex-none ml-[22px] h-[54px] w-px bg-black-900_26 shadow-md"></div>
+    <!-- Vertion -->
+    <div class="rounded-[5px] ml-[22px] flex bg-pink-700_19 p-1.5">
+      <p class="rounded-[10px] text-[14px] flex items-center justify-center bg-pink-700 px-1.5 font-medium text-white-a700">2.2.4</p>
+    </div>
+    <!-- Sperateur -->
+    <div class="flex-none ml-[22px] h-[54px] w-px bg-black-900_26 shadow-md"></div>
+    <!-- Return Button -->
+    <button class="group cursor-pointer ml-[22px] px-2 py-1 hover:bg-pink-700_19 active:bg-pink-700 flex-none rounded-lg focus:outline-none focus:ring focus:ring-pink-700_19 border border-solid border-black-900_26 shadow-xl gap-[9px] flex items-center">
+      <svg class="h-[12px] filter-white" width="14" height="13" viewBox="0 0 14 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3.1875 7.5L7.26039 11.5729C7.58747 11.9 7.58512 12.431 7.25516 12.7552C6.92931 13.0753 6.40632 13.073 6.08331 12.75L0.707106 7.37377C0.316582 6.98325 0.316582 6.35008 0.707107 5.95956L6.08331 0.583355C6.40632 0.260345 6.92931 0.258032 7.25516 0.578171C7.58512 0.902342 7.58747 1.43336 7.26039 1.76044L3.1875 5.83333H12.5C12.9602 5.83333 13.3333 6.20643 13.3333 6.66667C13.3333 7.1269 12.9602 7.5 12.5 7.5H3.1875Z" fill="#C8194A" />
+      </svg>
+      <p class="text-[18px] font-medium text-gray-900 group-active:text-white-a700">Retour</p>
+    </button>
+  </header>
+
+  <main class="mx-[38px] mt-6 flex flex-col gap-6">
+
+    <div class="cursor-pointer rounded-[18px] flex flex-1 w-full border border-solid border-black-900_26 bg-white-a700 p-3 shadow-lg">
+      <div class="flex w-full gap-5">
+        <div class="flex flex-col flex-1">
+          <div class="gap-[18px] flex items-center self-stretch">
+            <img src="./svg/icons/checkmark.svg" alt="Checkmark" class="h-[22px]">
+            <h2 class="text-[22px] font-semibold text-gray-900">
+              Notes</h2>
+          </div>
+          <p class="text-[16px] ml-10 font-medium text-gray-700">
+            Ajoute des fonctionnalités visuelles et pratiques à votre tableau de notes</p>
+        </div>
+        <div class="gap-[26px] flex items-center">
+          <img src="./svg/icons/next.svg" alt="Arrow Right" class="h-[26px]">
+          <img src="./svg/icons/chart-mixed.svg" alt="Thumbs Up" class="h-[50px] filter-mainColor">
+        </div>
+      </div>
+    </div>
+
+    <div class="cursor-pointer rounded-[18px] flex flex-1 w-full border border-solid border-black-900_26 bg-white-a700 p-3 shadow-lg">
+      <div class="flex w-full gap-5">
+        <div class="flex flex-col flex-1">
+          <div class="gap-[18px] flex items-center self-stretch">
+            <img src="./svg/icons/checkmark.svg" alt="Checkmark" class="h-[22px]">
+            <h2 class="text-[22px] font-semibold text-gray-900">
+              Notes</h2>
+          </div>
+          <p class="text-[16px] ml-10 font-medium text-gray-700">
+            Ajoute des fonctionnalités visuelles et pratiques à votre tableau de notes</p>
+        </div>
+        <div class="gap-[26px] flex items-center">
+          <img src="./svg/icons/next.svg" alt="Arrow Right" class="h-[26px]">
+          <img src="./svg/icons/chart-mixed.svg" alt="Thumbs Up" class="h-[50px] filter-mainColor">
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+
+</html>

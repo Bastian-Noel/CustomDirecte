@@ -1,10 +1,3 @@
-/* IMPORT CHROME LIB */
-browser = chrome;
-browserStorage = browser.storage.sync;
-browserVersion = browser.runtime.getManifest().version_name;
-browserStorageOnChanged = browser.storage.sync.onChanged;
-/* ----------------- */
-
 /* ----------------- Console Log ----------------- */
 const logStyle = {
   title: "font-size: 20px; color:#C8194A; font-weight: bold;",

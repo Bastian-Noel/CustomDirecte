@@ -1,9 +1,4 @@
-/* IMPORT CHROME LIB */
-browser = chrome;
-browserStorage = browser.storage.sync;
-browserVersion = browser.runtime.getManifest().version_name;
-browserStorageOnChanged = browser.storage.sync.onChanged;
-/* ----------------- */
+importScripts(chrome.runtime.getURL("scripts/browser.js"));
 
 defaultOptions = {
   groups: [
